@@ -27,6 +27,12 @@ package clks_alot_p;
         logic steady_low;
     } clock_events_s;
 
+    typedef struct packed {
+        logic          clk;
+        logic          pause_active;
+        clock_events_s events;
+    } clock_state_s;
+
 
 
 

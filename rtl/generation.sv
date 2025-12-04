@@ -6,7 +6,7 @@ module generation (
     input                                     starting_polarity_i,
 
     input                                     generation_en_i, // When this goes low, clock will stop on the next starting_polarity
-    //! NOTE: expected_half_rate should be AT LEAST `preemptive_delay + sync_cycle_offset + 1`
+    //! NOTE: expected_half_rate should be AT LEAST `preemptive_delay + sync_cycle_offset + 1` - Double check this
     input  [(clks_alot_p::COUNTER_WIDTH)-1:0] expected_half_rate_minus_one_i,
     input  [(clks_alot_p::COUNTER_WIDTH)-1:0] expected_quarter_rate_minus_one_i,
     //! NOTE: Effective preemptive delay MUST be longer than `sync_cycle_offset` - By at least X????
@@ -15,52 +15,37 @@ module generation (
     // Pauses maintain clock phasing when enabling and disabling
     // Pauses enable & disable when clock polarity matches
     input                                     pause_en_i,
-    input                                     pause_polarity_i, // Recovery will take care of polarity on its end for pauses as well
+    input                                     pause_polarity_i,
+    output                                    _pause_violation_o,
+    output                                    _pause_violation_o,
 
-    //? Recovery
-    // If desync comes in within 1 cycle of expected, skew the next event???
-    // input                                     recovery_en_i, //! Take care of this in the clock sync system
+    //? Recovery - To accomodate for skew/drift
     input  [(clks_alot_p::COUNTER_WIDTH)-1:0] sync_cycle_offset_i,
     input                                     negedge_sync_pulse_i,
     input                                     posedge_sync_pulse_i,
 
     //? Generated Clocks
-    output                                    expected_clk_o,
-    output        clks_alot_p::clock_events_s expected_clk_events_o,
-    output                                    preemptive_clk_o,
-    output        clks_alot_p::clock_events_s preemetive_clk_events_o
+    output        clks_alot_p::clock_states_s expected_clk_state_o,
+    output        clks_alot_p::clock_states_s preemptive_clk_state_o
 );
 
 /*
-? Generation Operation:
-Cycle Counter     -- Toggle clock each half-rate
-When `pause_en_i` -- Pause output during next matching polarity
-Trigger `expected_clk_events_o` when local clock hits edge or middle of state
-Trigger `preemetive_clk_events_o` when local clock hits edge or middle of state - Offset by `preemetive_cycle_count_i`
-
-? During Recovery:
-Cycle Counter -- Reset clock state during sync_pulses, set counter to `sync_cycle_offset_i` to account to input sync delay of incoming edge
-
-
-! Case where `*_sync_pulse_i` comes in handy...
-100 Mhz sys_dom_i, 10.0000 Mhz Expected IO, 10.0001 Mhz Actual... Clock will slowly skew lower, causing a sync pulse to move-up the core clock.
-
 This means the minimum half-rate would be (preemptive_delay[5] + sync_cycle_offset_i[4] + 1) = 10... 
 With 10 cycles being minimal...
 > core clk - Max IO clk
-       100 - 5Mhz
-       150 - 7.5Mhz
-       200 - 10Mhz
-       250 - 12.5Mhz
+   100 Mhz - 5 Mhz
+   150 Mhz - 7.5 Mhz
+   200 Mhz - 10 Mhz
+   250 Mhz - 12.5 Mhz 
 
 TODO:
 // 1. Sync Pulse Violation
 // 2. Expected Pause Control
-3. Preemptive Pause Control
+// 3. Preemptive Pause Control
 // 4. Post-Enable Cleanup
 // 4. Should we skew on re-sync? - No, cause the counter will automatically offset accordingly
 // 5. Clock Event Generation
-
+6. Pause Exception/Violation Generation
 */
 
 // Clock Configuration
@@ -122,55 +107,66 @@ TODO:
         end
     end
 
-// Clock Control, Common
-    wire set_clock_low = (set_polarity_i && ~starting_polarity_i)
-                      || busy_delay_current
-                      || negedge_sync_pulse_i;
-    wire set_clock_high = (set_polarity_i && ~starting_polarity_i)
-                       || posedge_sync_pulse_i;
-
 // Clock Control, Expected - Inherent 1 Cycle Delay to enforce phase-accurate pausing
+    wire set_expected_clock_low = (set_polarity_i && ~starting_polarity_i)
+                               || (busy_delay_current && ~starting_polarity_i)
+                               || negedge_sync_pulse_i;
+    wire set_expected_clock_high = (set_polarity_i && ~starting_polarity_i)
+                                || (busy_delay_current && starting_polarity_i)
+                                || posedge_sync_pulse_i;
+    wire expected_pause_active;
+
     clock_state expected_clock_state (
-        .sys_dom_i       (sys_dom_i),
-        .set_clock_low_i (set_clock_low),
-        .set_clock_high_i(set_clock_high),
-        .clock_active_i  (active_current),
-        .toggle_en_i     (expected_half_rate_elapsed),
-        .pause_en_i      (pause_en_i),
-        .pause_polarity_i(pause_polarity_i),
-        .pause_active_o  (),
-        .state_o         (expected_clk_o)
+        .sys_dom_i             (sys_dom_i),
+        .set_clock_low_i       (set_expected_clock_low),
+        .set_clock_high_i      (set_expected_clock_high),
+        .clock_active_i        (active_current),
+        .clear_state_i         (busy_delay_current),
+        .half_rate_elapsed_i   (expected_half_rate_elapsed),
+        .quarter_rate_elapsed_i(expected_quarter_rate_elapsed),
+        .pause_en_i            (pause_en_i),
+        .pause_polarity_i      (pause_polarity_i),
+        .pause_active_o        (expected_pause_active),
+        .state_o               (expected_clk_o)
     );
 
-    event_generation expected_event_generation (
-        .sys_dom_i           (sys_dom_i),
-        .clock_active_i      (active_current),
-        .io_clk_i            (expected_clk_o),
-        .half_rate_elapsed   (expected_half_rate_elapsed),
-        .quarter_rate_elapsed(expected_quarter_rate_elapsed),
-        .clk_events_o        (expected_clk_events_o)
+    wire expected_pause_active_pulse;
+
+    monostable_full #(
+        .BUFFERED(1'b0)
+    ) expected_pause_monostable_gen (
+        .clk_dom_i      (sys_dom_i),
+        .monostable_en_i(1'b1),
+        .sense_i        (expected_pause_active),
+        .prev_o         (), // Not Used
+        .posedge_mono_o (expected_pause_active_pulse),
+        .negedge_mono_o (), // Not Used
+        .bothedge_mono_o()  // Not Used
     );
+
 
 // Clock Control, Preemptive - Inherent 1 Cycle Delay to enforce phase-accurate pausing
-    clock_state preemptive_clock_state (
-        .sys_dom_i       (sys_dom_i),
-        .set_clock_low_i (set_clock_low),
-        .set_clock_high_i(set_clock_high),
-        .clock_active_i  (active_current),
-        .toggle_en_i     (preemptive_half_rate_elapsed),
-        .pause_en_i      (pause_en_i),
-        .pause_polarity_i(pause_polarity_i),
-        .pause_active_o  (),
-        .state_o         (preemptive_clk_o)
-    );
+    wire set_preemptive_clock_low = (set_polarity_i && ~starting_polarity_i)
+                                 || (busy_delay_current && ~starting_polarity_i)
+                                 || negedge_sync_pulse_i
+                                 || (expected_pause_active && ~pause_polarity_i);
+    wire set_preemptive_clock_high = (set_polarity_i && starting_polarity_i)
+                                  || (busy_delay_current && starting_polarity_i)
+                                  || posedge_sync_pulse_i
+                                  || (expected_pause_active && pause_polarity_i);
 
-    event_generation preemptive_event_generation (
-        .sys_dom_i           (sys_dom_i),
-        .clock_active_i      (active_current),
-        .io_clk_i            (preemptive_clk_o),
-        .half_rate_elapsed   (preemptive_half_rate_elapsed),
-        .quarter_rate_elapsed(preemptive_quarter_rate_elapsed),
-        .clk_events_o        (preemptive_clk_events_o)
+    clock_state preemptive_clock_state (
+        .sys_dom_i             (sys_dom_i),
+        .set_clock_low_i       (set_clock_low),
+        .set_clock_high_i      (set_clock_high),
+        .clock_active_i        (active_current),
+        .clear_state_i         (busy_delay_current),
+        .half_rate_elapsed_i   (preemptive_half_rate_elapsed),
+        .quarter_rate_elapsed_i(preemptive_quarter_rate_elapsed),
+        .pause_en_i            (pause_en_i),
+        .pause_polarity_i      (pause_polarity_i),
+        .pause_active_o        (), // Not Used
+        .state_o               (preemptive_clk_o)
     );
 
 endmodule : generation
