@@ -118,7 +118,8 @@ TODO: Add more violation checks
         .quarter_rate_elapsed_i(expected_quarter_rate_elapsed),
         .pause_en_i            (pause_en_i),
         .pause_polarity_i      (pause_polarity_i),
-        .state_o               (expected_clk_state_o)
+        .unpausable_state_o    (), // Not Used
+        .pausable_state_o      (expected_clk_state_o)
     );
 
     wire expected_pause_active_pulse;
@@ -155,7 +156,8 @@ TODO: Add more violation checks
         .quarter_rate_elapsed_i(preemptive_quarter_rate_elapsed),
         .pause_en_i            (pause_en_i),
         .pause_polarity_i      (pause_polarity_i),
-        .state_o               (preemptive_clk_state_o)
+        .unpausable_state_o    (), // TODO: this is used for pause-violation recovery
+        .pausable_state_o      (preemptive_clk_state_o)
     );
 
 // Pause Violation Check
