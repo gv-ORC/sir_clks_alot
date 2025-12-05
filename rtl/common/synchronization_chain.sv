@@ -17,12 +17,12 @@ module synchronization_chain #(
     input        [CHAIN_WIDTH-1:0] data_o
 );
 
-//* Clock Configuration
+// Clock Configuration
     wire clk = clk_dom_i.clk;
     wire clk_en = clk_dom_i.clk_en;
     wire sync_rst = clk_dom_i.sync_rst;
 
-//* Sync Chain
+// Sync Chain
     genvar buffer_index;
     wire [CHAIN_DEPTH-1:0][CHAIN_WIDTH-1:0] read_vector;
     generate

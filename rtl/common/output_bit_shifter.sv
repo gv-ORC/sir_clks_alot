@@ -21,18 +21,18 @@ module output_bit_shifter #(
     output       [SHIFT_DEPTH-1:0] data_o
 );
 
-//* Clock Configuration
+// Clock Configuration
     wire clk = clk_dom_i.clk;
     wire clk_en = clk_dom_i.clk_en;
     wire sync_rst = clk_dom_i.sync_rst;
 
-//* Common Trigger
+// Common Trigger
     wire buffer_trigger = sync_rst
                        || (clk_en && we_en_i)
                        || (clk_en && shift_en_i)
                        || (clk_en && clear_en_i);
 
-//* Data Shifter
+// Data Shifter
     reg    [INPUT_DEPTH-1:0] data_buffer_current;
     logic  [INPUT_DEPTH-1:0] data_buffer_next;
     wire               [1:0] data_buffer_next_condition;
@@ -54,7 +54,7 @@ module output_bit_shifter #(
     end
     assign data_o = data_buffer_current[SHIFT_DEPTH-1:0];
 
-//* Empty Tracking
+// Empty Tracking
     reg    [INPUT_DEPTH-1:0] data_invalid_vec_current;
     logic  [INPUT_DEPTH-1:0] data_invalid_vec_next;
     wire               [1:0] data_invalid_vec_next_condition;

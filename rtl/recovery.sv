@@ -1,8 +1,15 @@
 module recovery (
     input                   common_p::clk_dom sys_dom_i,
 
-    input                                     recovery_en,
-    input                               [2:0] recovery_mode_i, // Replace this with an enum
+    input                                     recovery_en_i,
+    // Used for differential and quad-state signals to decide which input is used to determine the primary clock edges
+    // 0: io_clk_i.neg edges are forwarded, with io_clk_i.pos used for verification
+    // 1: io_clk_i.pos edges are forwarded, with io_clk_i.neg used for verification
+    // Use for single-ended signals to decide which input is used as the clock signal
+    // 0: io_clk_i.neg used
+    // 1: io_clk_i.pos used
+    input                                     polarity_select_i,
+    input        clks_alot_p::recovery_mode_e recovery_mode_i,
     output                                    busy_o,
     input  [(clks_alot_p::COUNTER_WIDTH)-1:0] minimum_half_rate_minus_one_i,
     input  [(clks_alot_p::COUNTER_WIDTH)-1:0] maximum_half_rate_minus_one_i,
@@ -11,21 +18,13 @@ module recovery (
     input                                     pause_polarity_i,
     input  [(clks_alot_p::COUNTER_WIDTH)-1:0] minimum_pause_cycles_i,
 
-    input        clks_alot_p::recovery_pins_s clk_data_i, // Already sync'd data pair
+    input        clks_alot_p::recovery_pins_s io_clk_i, // Already sync'd data pair
 
     output                                    edge_half_rate_minus_one_o,
     output        clks_alot_p::clock_states_s actual_clk_state_o
 );
 
 /*
-Types of Incoming Clocks: (recovery_mode_i)
-1. Single Ended Continous Clock - w/o Pause
-2. Single Ended Continous Clock - with Pause
-3. Single Ended Data
-4. Differential Pair Clock (LVDS) - w/o Pause
-5. Differential Pair Clock (LVDS) - with Pause
-6. Differential Pair Data (LVDS) - w/o Pause
-7. Differential Pair Data (LVDS) - with Pause
 
 Locked-in occurs when there has been at least 2 full clock cycles (4 half-rates have passed)
 
@@ -63,14 +62,33 @@ After recovery is locked-in, update half-rate halfway through the next cycle
 
     assign busy_o = active_current || busy_delay_current;
 
-// Edge Detection & Event Generation
+// Event Recovery
+    clks_alot_p::recovered_events_s recovered_events;
 
-// Cycle Counter
+    event_recovery event_recovery (
+        .sys_dom_i         (sys_dom_i),
+        .recovery_en_i     (recovery_en_i),
+        .polarity_select_i (polarity_select_i),
+        .recovery_mode_i   (recovery_mode_i),
+        .io_clk_i          (io_clk_i),
+        .recovered_events_o(recovered_events),
+    );
+
+// Rate Recovery
+    rate_recovery rate_recovery (
+
+    );
+
+// Pause Recovery
+    pause_recovery pause_recovery (
+
+    ):
 
 // Pause Detection
 
-// Drift Averaging
+// Drift Averaging - Accounts for holding steady during external pause events (if different drift directions, throw violation)
+    // This could be used to predict the next nudge
 
-// Half-Rate Averaging
+// High/Low Half-Rate Averaging - Allows for PWM approximation - Allow Polarity Selection for easier external math
 
 endmodule : recovery

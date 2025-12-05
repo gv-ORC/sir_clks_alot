@@ -7,38 +7,48 @@ module generation (
 
     input                                     generation_en_i, // When this goes low, clock will stop on the next starting_polarity
     output                                    busy_o,
-    //! NOTE: expected_half_rate should be AT LEAST `preemptive_delay + sync_cycle_offset + 1` - Double check this
-    input  [(clks_alot_p::COUNTER_WIDTH)-1:0] expected_half_rate_minus_one_i,
+    input  [(clks_alot_p::COUNTER_WIDTH)-1:0] expected_half_rate_minus_two_i, // change every half-rate pulse, and you can get PWM
     input  [(clks_alot_p::COUNTER_WIDTH)-1:0] expected_quarter_rate_minus_one_i,
-    //! NOTE: Effective preemptive delay MUST be longer than `sync_cycle_offset` - By at least X????
     input  [(clks_alot_p::COUNTER_WIDTH)-1:0] preemptive_half_rate_minus_one_i,
     input  [(clks_alot_p::COUNTER_WIDTH)-1:0] preemptive_quarter_rate_minus_one_i,
+
+    //? Recovery - To accomodate for skew/drift
+    input  [(clks_alot_p::COUNTER_WIDTH)-1:0] sync_cycle_offset_i,
+    input         clks_alot_p::clock_states_s actual_clk_state_i, // for "Clock came too Early"
+
+    //? Unpausable Output
+    output        clks_alot_p::clock_states_s unpausable_expected_clk_state_o,
+    output        clks_alot_p::clock_states_s unpausable_preemptive_clk_state_o,
+
+    //? Pausable Output
     // Pauses maintain clock phasing when enabling and disabling
     // Pauses enable & disable when clock polarity matches
     input                                     pause_en_i,
     input                                     pause_polarity_i,
+    output        clks_alot_p::clock_states_s pausable_expected_clk_state_o,
+    output        clks_alot_p::clock_states_s pausable_preemptive_clk_state_o,
     output                                    pause_start_violation_o,
-    output                                    pause_stop_violation_o,
-
-    //? Recovery - To accomodate for skew/drift
-    input  [(clks_alot_p::COUNTER_WIDTH)-1:0] sync_cycle_offset_i,
-    input         clks_alot_p::clock_states_s actual_clk_state_i,
-
-    //? Generated Clocks
-    output        clks_alot_p::clock_states_s expected_clk_state_o,
-    output        clks_alot_p::clock_states_s preemptive_clk_state_o
+    output                                    pause_stop_violation_o
 );
 
-/*
-Based on estimates so far, minimum half-rate would be (preemptive_delay[5] + sync_cycle_offset_i[4] + 1) = 10... 
-Resulting in:
-> core clk - Max IO clk
-   100 Mhz - 5 Mhz
-   150 Mhz - 7.5 Mhz
-   200 Mhz - 10 Mhz
-   250 Mhz - 12.5 Mhz
+/* 
+* Approximations *
+Rx Sync Buffer: 3 (sync_cycle_offset_i)
+Clock Recovery: 1
+Clock Config: 1
+Clock Gen Delay: 1
+Tx Logic: 1 (+1?)
+Tx Buffer: 1(2) (only takes 1 cycle, but we add an extra to account for slip... slip needs to be adjustable based on speed... super slow clocks may have HUGE slip)
+Sync Buffer: 1* (Doesnt Count, this is our "sync bound" - data is gaurenteed to be stable for this clock as the timing for the internal register will made to meet sys_clk... as long as slip is set correctly)
+> Total Preemptive Anticipation: 8 Cycles (preemtive_cycle_count)
 
-TODO: Add more violation checks
+Minimum Half-Rate == Preemptive Anticipation
+
+Core Clock -> IO Clock
+   100 Mhz -> 6.25 Mhz
+   200 Mhz -> 12.5 Mhz
+
+Use larger counters... allow the clocks to overlap
 */
 
 // Clock Configuration
@@ -69,19 +79,34 @@ TODO: Add more violation checks
 
     assign busy_o = active_current || busy_delay_current;
 
-// Cycle Counter
-    reg    [(clks_alot_p::COUNTER_WIDTH)-1:0] cycle_count_current;
+// Clock Event Detection and Correction
+    reg  [(clks_alot_p::COUNTER_WIDTH)-1:0] cycle_count_current;
 
-    wire                                      recovery_check = actual_clk_state_i.events.falling_edge || actual_clk_state_i.events.rising_edge;
-    wire                                      expected_half_rate_elapsed = cycle_count_current == expected_half_rate_minus_one_i;
-    wire                                      expected_quarter_rate_elapsed = cycle_count_current == expected_quarter_rate_minus_one_i;
-    wire                                      preemptive_half_rate_elapsed = cycle_count_current == preemptive_half_rate_minus_one_i;
-    wire                                      preemptive_quarter_rate_elapsed = cycle_count_current == preemptive_quarter_rate_minus_one_i;
-    
+    reg  half_rate_delay_current;
+    wire expected_half_rate_elapsed = cycle_count_current == expected_half_rate_minus_two_i;
+    wire nudge_check = actual_clk_state_i.events.falling_edge || actual_clk_state_i.events.rising_edge;
+    wire half_rate_delay_next = ~sync_rst && expected_half_rate_elapsed && ~busy_delay_current;
+    wire half_rate_delay_trigger = sync_rst
+                                || (clk_en && clock_active_i && expected_half_rate_elapsed) // Set
+                                || (clk_en && clock_active_i && nudge_check) // Clear
+                                || (clk_en && busy_delay_current);
+    always_ff @(posedge clk) begin
+        if (half_rate_delay_trigger) begin
+            half_rate_delay_current <= half_rate_delay_next;
+        end
+    end
+
+    wire expected_quarter_rate_elapsed = cycle_count_current == expected_quarter_rate_minus_one_i;
+    wire preemptive_half_rate_elapsed = cycle_count_current == preemptive_half_rate_minus_one_i;
+    wire preemptive_quarter_rate_elapsed = cycle_count_current == preemptive_quarter_rate_minus_one_i;
+
+    wire stall_check = half_rate_delay_current ^ nudge_check;
+
+// Cycle Counter
     logic  [(clks_alot_p::COUNTER_WIDTH)-1:0] cycle_count_next;
     wire                                [1:0] cycle_count_next_condition;
-    assign                                    cycle_count_next_condition[0] = recovery_check;
-    assign                                    cycle_count_next_condition[1] = expected_half_rate_elapsed || sync_rst || busy_delay_current;
+    assign                                    cycle_count_next_condition[0] = nudge_check;
+    assign                                    cycle_count_next_condition[1] = half_rate_delay_current || sync_rst || busy_delay_current;
     always_comb begin : cycle_count_nextMux
         case (cycle_count_next_condition)
             2'b00  : cycle_count_next = cycle_count_current + clks_alot_p::COUNTER_WIDTH'(1);
@@ -116,10 +141,10 @@ TODO: Add more violation checks
         .clear_state_i         (busy_delay_current),
         .half_rate_elapsed_i   (expected_half_rate_elapsed),
         .quarter_rate_elapsed_i(expected_quarter_rate_elapsed),
+        .unpausable_state_o    (unpausable_expected_clk_state_o),
         .pause_en_i            (pause_en_i),
         .pause_polarity_i      (pause_polarity_i),
-        .unpausable_state_o    (), // Not Used
-        .pausable_state_o      (expected_clk_state_o)
+        .pausable_state_o      (pausable_expected_clk_state_o)
     );
 
     wire expected_pause_active_pulse;
@@ -154,10 +179,10 @@ TODO: Add more violation checks
         .clear_state_i         (busy_delay_current),
         .half_rate_elapsed_i   (preemptive_half_rate_elapsed),
         .quarter_rate_elapsed_i(preemptive_quarter_rate_elapsed),
+        .unpausable_state_o    (unpausable_preemptive_clk_state_o),
         .pause_en_i            (pause_en_i),
         .pause_polarity_i      (pause_polarity_i),
-        .unpausable_state_o    (), // TODO: this is used for pause-violation recovery
-        .pausable_state_o      (preemptive_clk_state_o)
+        .pausable_state_o      (pausable_preemptive_clk_state_o)
     );
 
 // Pause Violation Check

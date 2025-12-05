@@ -9,10 +9,10 @@ module clock_state (
     input                              half_rate_elapsed_i,
     input                              quarter_rate_elapsed_i,
 
+    output clks_alot_p::clock_states_s unpausable_state_o,
+
     input                              pause_en_i,
     input                              pause_polarity_i,
-
-    output clks_alot_p::clock_states_s unpausable_state_o,
     // 1 Cycle delay to enforce proper pausing
     output clks_alot_p::clock_states_s pausable_state_o
 );

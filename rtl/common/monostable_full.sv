@@ -21,12 +21,12 @@ module monostable_full #(
     output                         bothedge_mono_o
 );
 
-//* Clock Configuration
+// Clock Configuration
     wire clk = clk_dom_i.clk;
     wire clk_en = clk_dom_i.clk_en;
     wire sync_rst = clk_dom_i.sync_rst;
 
-//* Previous State    
+// Previous State    
     reg  sense_prev_current;
     wire sense_prev_next = ~sync_rst && sense_i && monostable_en_i;
     wire sense_prev_trigger = sync_rst || clk_en;
@@ -36,7 +36,7 @@ module monostable_full #(
         end
     end
 
-//* Optional Output Buffer
+// Optional Output Buffer
     generate
         if (BUFFERED) begin
             wire       posedge_check = ~sense_prev_current && sense_i && monostable_en_i;
