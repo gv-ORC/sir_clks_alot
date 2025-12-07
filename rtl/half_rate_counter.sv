@@ -23,3 +23,14 @@
         end
     end
     assign current_rate_o = prior_rate_current;
+
+
+
+/*
+    1nd Rolling Counter
+    2nd 
+
+    Take the output of a counter during the proper events, if the value is roughly half the amount of the current value, accept 
+
+
+*/

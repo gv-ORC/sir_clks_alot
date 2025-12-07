@@ -1,10 +1,18 @@
 module sense_filtering (
     input     clks_alot_p::half_rate_limits_s half_rate_limits_i,
 
+    // When enabled:
+    // `polarity` == 0: Only track high-level rates
+    // `polarity` == 1: Only track low-level rates
+    input                                     polarity_en_i,
+    input                                     polarity_i,
+    input                                     primary_clk_i,
+
     input  [(clks_alot_p::COUNTER_WIDTH)-1:0] current_rate_counter_i,
     input                                     sense_event_i,
 
-    output                                    filtered_event_o,
+    output                                    ignore_filtered_event_o,
+    output                                    polarity_filtered_event_o,
     output                                    over_frequency_violation_o,
     output                                    under_frequency_violation_o
 );
@@ -19,6 +27,10 @@ module sense_filtering (
 
 // Sense Filter
     wire   ignore_check = ignore_over_check || ignore_under_check;
-    assign filtered_event_o = sense_event_i && ~ignore_check;
+    assign ignore_filtered_event_o = sense_event_i && ~ignore_check && ~polarity_en_i;
+    // TODO: This may be a critical path....
+    assign polarity_filtered_event_o = (sense_event_i && ~ignore_check && polarity_en_i && polarity_i && ~primary_clk_i)
+                                    || (sense_event_i && ~ignore_check && polarity_en_i && ~polarity_i && primary_clk_i)
+                                    || (sense_event_i && ~ignore_check && ~polarity_en_i);
 
 endmodule : sense_filtering

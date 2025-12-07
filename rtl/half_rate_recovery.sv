@@ -23,7 +23,28 @@ module half_rate_recovery (
     wire clk_en = sys_dom_i.clk_en;
     wire sync_rst = sys_dom_i.sync_rst;
 
-// Lock-In - Take the configured Min/Max half-rates and slowly narrow them down to what the active clock is currently at
+/*
+    Pausable signals are either clocks that can be paused between transactions, or data that needs its clock recovered
+
+    SINGLE_CONTINUOUS - Lockin by grabbing the rate and only allowing a certain amount of skew.
+      SINGLE_PAUSABLE - Update lockin when the new rate is less than half of the current rate, but still within the bounds.
+       DIF_CONTINUOUS - Lockin by halving the captured full rate, allowing a certain amount of skew.
+         DIF_PAUSABLE - Update lockin when the new rate is less than half of the current rate, but still within the bounds.
+      QUAD_CONTINUOUS - Lockin by halving the captured full rate, allowing a certain amount of skew.
+                        Force Use of `*.any_valid_edge`
+        QUAD_PAUSABLE - Update lockin when the new rate is less than half of the current rate, but still within the bounds. 
+                        Force Use of `*.any_valid_edge`
+
+    For non-single modes: Violation range will be anything between below half-rate
+
+    ? Polarity
+     >    Disabled - Update Rate on `*.any_valid_edge`
+     > Enabled Pos - Enable Counter on `*.rising_edge`, Update Rate on `*.falling_edge`
+     > Enabled Neg - Enable Counter on `*.falling_edge`, Update Rate on `*.rising_edge`
+*/
+
+
+// Lock-In
     reg  [(clks_alot_p::COUNTER_WIDTH-1):0] rate_counter_current;
     wire                                    filtered_event;
     wire    clks_alot_p::half_rate_limits_s filtered_limits;

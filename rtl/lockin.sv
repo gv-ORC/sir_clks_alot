@@ -10,6 +10,20 @@ module lockin (
     output    clks_alot_p::half_rate_limits_s filtered_limits_o
 );
 
+/*
+    Unpausable:
+        Current
+        xxx{vvv<---|--->vvv}xxx
+        xxx{vvvv<--|-->vvvv}xxx
+        xxx{vvvvv<-|->vvvvv}xxx
+
+    Pausable:
+               At most half : Current
+        xxx{vvv<---|--->vvv...vvv<---|--->vvv}xxx
+        xxx{vvvv<--|-->vvvv...vvvv<--|-->vvvv}xxx
+        xxx{vvvvv<-|->vvvvv...vvvvv<-|->vvvvv}xxx
+*/
+
 // Initialization Check
     wire init_limits;
     monostable_full #(
@@ -24,17 +38,14 @@ module lockin (
         .bothedge_mono_o()  // Not Used
     );
 
-// Maximum Violation Rate Control
-    /*
+// Rolling Rate - Only updates when in range
 
-    */
-
-// Minimum Violation Rate Control
+// Current Rate - Updates every filtered edge
 
 // Output Assignments
-    assign filtered_limits_o.half_lockin_window_minus_one = half_rate_limits_i.half_lockin_window_minus_one;
-    assign filtered_limits_o.maximummaximum_violation_minus_one = lock_in
-    assign filtered_limits_o.maximumminimum_violation_minus_one = lock_in
+    assign filtered_limits_o.;
+    assign filtered_limits_o.;
+    assign filtered_limits_o.;
     assign filtered_limits_o.maximum_band_minus_one = half_rate_limits_i.maximum_band_minus_one;
     assign filtered_limits_o.minimum_band_minus_one = half_rate_limits_i.minimum_band_minus_one;
 
