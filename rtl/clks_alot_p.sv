@@ -26,10 +26,17 @@ package clks_alot_p;
         x = Ignored Rate
         v = Violation Triggered Rate
         
-        Locking-in:
-        xxx{vvv<---|--->vvv}xxx
-        xxx{vvvv<--|-->vvvv}xxx
-        xxx{vvvvv<-|->vvvvv}xxx
+        Unpausable:
+            Current
+            xxx{vvv<---|--->vvv}xxx
+            xxx{vvvv<--|-->vvvv}xxx
+            xxx{vvvvv<-|->vvvvv}xxx
+
+        Pausable:
+                   At most half : Current
+            xxx{vvv<---|--->vvv...vvv<---|--->vvv}xxx
+            xxx{vvvv<--|-->vvvv...vvvv<--|-->vvvv}xxx
+            xxx{vvvvv<-|->vvvvv...vvvvv<-|->vvvvv}xxx
         */
         logic lockin_enabled;
         // Used when recovering a clock from a data signal
@@ -37,9 +44,9 @@ package clks_alot_p;
     } duty_cycle_mode_s;
 
     typedef struct packed {
-        logic [COUNTER_WIDTH-1:0] half_lockin_window_minus_one;
-        logic [COUNTER_WIDTH-1:0] maximum_violation_minus_one;
-        logic [COUNTER_WIDTH-1:0] minimum_violation_minus_one;
+        logic [COUNTER_WIDTH-1:0] acceptible_skew;
+
+        logic [COUNTER_WIDTH-1:0] lockin_rate;
         logic [COUNTER_WIDTH-1:0] maximum_band_minus_one;
         logic [COUNTER_WIDTH-1:0] minimum_band_minus_one;
     } half_rate_limits_s;

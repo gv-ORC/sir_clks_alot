@@ -22,6 +22,9 @@ module lockin (
         xxx{vvv<---|--->vvv...vvv<---|--->vvv}xxx
         xxx{vvvv<--|-->vvvv...vvvv<--|-->vvvv}xxx
         xxx{vvvvv<-|->vvvvv...vvvvv<-|->vvvvv}xxx
+    For Pausable Recovery: Skew must be set at an appropriate level for the expected drift during the longest sequence of like bits.
+
+
 */
 
 // Initialization Check
@@ -38,9 +41,13 @@ module lockin (
         .bothedge_mono_o()  // Not Used
     );
 
-// Rolling Rate - Only updates when in range
+//TODO: Have a way to validate the lockin that is configurable - 4x or 8x matching sequences.
+/*
+Have a counter that counts how many edges were within skew range.
 
 // Current Rate - Updates every filtered edge
+
+// Last Rate - Used to determine the validity of the next edge
 
 // Output Assignments
     assign filtered_limits_o.;
