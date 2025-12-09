@@ -12,7 +12,7 @@ module half_rate_control (
 
     output clks_alot_p::SOME_STRUCT violations_o, // TODO:
 
-    output clks_alot_p::SOME_STRUCT filtered_limits_o,
+    output clks_alot_p::SOME_STRUCT filtered_limits_o, // TODO:
 
     output                                          expected_drift_req_o,
     input                                           expected_drift_res_i,
@@ -67,20 +67,23 @@ module half_rate_control (
         .under_frequency_violation_o()
     );
 
-// Rate Recovery
-    rate_recovery rate_recovery (
-        .sys_dom_i             (),
-        .recovery_en_i         (),
-        .recovery_config_i     (),
-        .recovered_events_i    (),
-        .current_rate_o        (),
-        .recovered_half_rates_o()
+// Rate & Pause Recovery
+    half_rate_recovery half_rate_recovery (
+        .sys_dom_i (),
     );
 
-// Pause Recovery
-    pause_recovery pause_recovery (
+    // Below is the old pause recovery pin, here for reference
+module pause_recovery (
+    input                    common_p::clk_dom_s sys_dom_i,
+    
+    input                                      recovery_en_i,
+    input       clks_alot_p::recovery_conf_s recovery_config_i,
 
-    ):
+    input      clks_alot_p::recovered_events_s recovered_events_i,
+    input   [(clks_alot_p::COUNTER_WIDTH)-1:0] current_rate_i,
+
+    output         clks_alot_p::pause_status_s pause_status_o
+);
 
 // Half-Rate Counter
 
