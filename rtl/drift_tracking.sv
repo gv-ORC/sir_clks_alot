@@ -43,6 +43,12 @@ module drift_tracking (
 
 
 // Drift Accumulator - Drift the preemptive clock to match any difting of the expected clock
+//TODO: Refactor this to hold a drift only long enough for the next respective edge, 
+//TODO: Have some sort of Build-and-Decay system to check for drifts happening too often
+//TODO: ... Have the following 3 configurations; Growth
+//TODO: 1. Growth Rate - How much is added to a saturation counter during a drift
+//TODO: 2. Decay Rate - How much is subtracted every event a drift does not occur
+//TODO: 3. Ceiling - The saturation point of the counter, if this is reached - throw a violation
     drift_accumulator drift_accumulator (
         .sys_dom_i                       (),
         .accumulator_en_i                (),
@@ -58,9 +64,6 @@ module drift_tracking (
         .drift_res_i                     (),
         .drift_direction_o               ()
     );
-
-
-
 
 
 

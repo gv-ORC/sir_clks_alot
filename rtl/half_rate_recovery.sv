@@ -5,7 +5,7 @@ module half_rate_recovery (
 // TODO: Make sure this has support for full-rate recovery when its configured as such and half-rate when it is not
 
 // Check if the event is occuring within the right frequency band
-// TODO: See if we can reduce this to just band bounds, violation bounds should be managed by lockin 
+// TODO: See if we can reduce this to just band bounds, violation bounds should be managed by lockin(it does now) 
 event_filtering event_filtering (
     .half_rate_limits_i         (),
     .polarity_en_i              (),

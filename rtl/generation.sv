@@ -47,7 +47,9 @@ Missed Cycle Counter: (Tracks how many times the local system has toggled its st
 0,      1,               2,                0,               0
 
 > Have a drift-accumulator for preemptive counters that are overly preemptive.
-> Apply the drift-accumulator at-most once every `n` IO Edges. (This should be configurable)
+> Apply the drift-accumulator at-most once every `n` IO Edges. (This should be configurable) 
+  ^ NO.. if a drift happens that often, it should flag an error...
+    > Instead, have a way to configure how offten a drift is allowed to occur
 Preemptive Counter:
 27, 28*, 29, 30, 31, 32*, 33, 34, 35, 36*, 37, 38, 39*, 40, 41, 42, 43*
 Drift Accumulator:
@@ -62,5 +64,78 @@ TODO:
 4. Work on how pausing will work... (between transactions, not during like-bits inside the same transaction)
 */
 
+// Counter
+    reg  [(clks_alot_p::RATE_COUNTER_WIDTH)-1:0] generation_count_current;
+    wire [(clks_alot_p::RATE_COUNTER_WIDTH)-1:0] generation_count_next = (sync_rst || clear_state_i)
+                                                                       ? clks_alot_p::RATE_COUNTER_WIDTH'(0)
+                                                                       : (generation_count_current + clks_alot_p::RATE_COUNTER_WIDTH'(1));
+    wire                                         generation_count_trigger = sync_rst
+                                                                         || (clk_en && generation_en_i)
+                                                                         || (clk_en && clear_state_i);
+    always_ff @(posedge clk) begin
+        if (generation_count_trigger) begin
+            generation_count_current <= generation_count_next;
+        end
+    end
+
+
+// Next Expected Half-Rate Limit (Quarter-Rate is calculated off of this)
+/*
+Reacts instantly to incoming events.
+Uses incoming events to calculate drifts.
+Hold last Limit to check for the late-half of the drift window.
+Detects and Forwards Drift Events
+*/
+
+// Lockin the state of the expected clock - Checks for High and Low rates together or Full rates if that is configured
+//TODO: Refactor to support new architecture... and to include support for skipped-events during pausable data
+//TODO:                                         ^ `~drift_detected && event` will support skipped-events,
+//TODO:                                            as long as rate accumulator is reset by expected events
+//TODO:                                       ! ^^^^^^^^ ! Already does this, with the same caveat ! ^^^^^^^^^ !
+    lockin lockin (
+        .sys_dom_i                (),
+        .lockin_en_i              (),
+        .clear_state_i            (),
+        .active_drift_direction_i (),
+        .half_rate_limits_i       (),
+        .rate_accumulator_i       (),
+        .filtered_event_i         (),
+        .polarity_filtered_event_i(),
+        .active_rate_valid_i      (),
+        .active_rate_i            (),
+        .drift_detected_o         (),
+        .drift_direction_o        (),
+        .drift_amount_o           (),
+        .update_rate_o            (),
+        .clear_rate_o             (),
+        .locked_in_o              (),
+        .rate_violation_o         ()
+    );
+
+// Drift Tracking
+    drift_tracking drift_tracking (
+        .sys_dom_i                       (sys_dom_i),
+        .accumulator_en_i                (),
+        .clear_state_i                   (),
+        .drift_detected_i                (),
+        .drift_direction_i               (),
+        .max_drift_i                     (),
+        .drift_acc_overflow_o            (),
+        .inverse_drift_violation_o       (),
+        .minimum_drift_lockout_duration_i(),
+        .any_valid_edge_i                (),
+        .expected_drift_req_o            (),
+        .expected_drift_res_i            (),
+        .expected_drift_direction_o      (),
+        .preemptive_drift_req_o          (),
+        .preemptive_drift_res_i          (),
+        .preemptive_drift_direction_o    ()
+    );
+
+// Next Preemptive Half-Rate Limit (Quarter-Rate is calculated off of this)
+/*
+Reacts to drift events - Allows drifts to offset the next limit during preemptive events. 
+Uses active High Half-Rate and Low Half-Rate during event updates.
+*/
 
 endmodule : generation

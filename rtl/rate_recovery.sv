@@ -20,7 +20,11 @@ module rate_recovery (
      >    Disabled - Update Rate on `*.any_valid_edge`
      > Enabled Pos - Enable Counter on `*.rising_edge`, Update Rate on `*.falling_edge`
      > Enabled Neg - Enable Counter on `*.falling_edge`, Update Rate on `*.rising_edge`
-*/
+
+* When in full-rate mode with an odd full-rate, have an option for which edge to apply the odd half-rate
+
+
+*/ 
 
 // Half-Rate Control (High/Both)
     half_rate_recovery high_half_rate_recovery (
@@ -32,25 +36,6 @@ module rate_recovery (
 
     );
 
-// Drift Tracking
-    drift_tracking drift_tracking (
-        .sys_dom_i                       (sys_dom_i),
-        .accumulator_en_i                (),
-        .clear_state_i                   (),
-        .drift_detected_i                (),
-        .drift_direction_i               (),
-        .max_drift_i                     (),
-        .drift_acc_overflow_o            (),
-        .inverse_drift_violation_o       (),
-        .minimum_drift_lockout_duration_i(),
-        .any_valid_edge_i                (),
-        .expected_drift_req_o            (),
-        .expected_drift_res_i            (),
-        .expected_drift_direction_o      (),
-        .preemptive_drift_req_o          (),
-        .preemptive_drift_res_i          (),
-        .preemptive_drift_direction_o    ()
-    );
 
 // Pause Control
 

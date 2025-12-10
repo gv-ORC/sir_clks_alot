@@ -46,6 +46,7 @@ module lockin (
                                                                   : half_of_active_rate;
     wire less_than_half_upper_bound = rate_accumulator_i <= half_upper_bound;
 
+//TODO: These comparisons may need to be moved into expected_event_generation when it calculates drift, can share results to save hardware
 // Drift Window Check
     wire [(clks_alot_p::RATE_COUNTER_WIDTH)-1:0] upper_bound = using_pin_came_late
                                                              ? (active_rate_i + half_rate_limits_i.drift_window)
@@ -60,23 +61,16 @@ module lockin (
     wire less_than_rate = rate_accumulator_i < active_rate_i;
     
     wire rate_within_window = less_than_upper_bound && more_than_lower_bound;
-    wire pin_came_late_check = more_than_rate && less_than_upper_bound;
-    wire pin_came_early_check = less_than_rate && more_than_lower_bound;
 
-    assign drift_detected_o = pin_came_late_check || pin_came_early_check;
-    assign drift_direction_o = pin_came_late_check
-                             ? clks_alot_p::PIN_CAME_LATE
-                             : clks_alot_p::PIN_CAME_EARLY;
-    assign drift_amount_o = pin_came_late_check
-                          ? (rate_accumulator_i - active_rate_i)
-                          ? (active_rate_i - rate_accumulator_i);
+
+//TODO: code below may need to be moved to generation
 
 // Lockin Accumulator
     reg  [(clks_alot_p::RATE_COUNTER_WIDTH)-1:0] lockin_accumulator_current;
-    wire                                    lockin_saturation_check = lockin_accumulator_current == half_rate_limits_i.required_lockin_duration;
+    wire                                         lockin_saturation_check = lockin_accumulator_current == half_rate_limits_i.required_lockin_duration;
     wire [(clks_alot_p::RATE_COUNTER_WIDTH)-1:0] lockin_accumulator_next = (sync_rst || ~rate_within_window || clear_state_i)
-                                                                    ? clks_alot_p::RATE_COUNTER_WIDTH'(0)
-                                                                    : (lockin_accumulator_current + clks_alot_p::RATE_COUNTER_WIDTH'(1));
+                                                                         ? clks_alot_p::RATE_COUNTER_WIDTH'(0)
+                                                                         : (lockin_accumulator_current + clks_alot_p::RATE_COUNTER_WIDTH'(1));
     wire                                    lockin_accumulator_trigger = sync_rst 
                                                                       || (clk_en && polarity_filtered_event_i && lockin_en_i)
                                                                       || (clk_en && clear_state_i);
