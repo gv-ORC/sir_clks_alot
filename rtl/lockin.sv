@@ -1,26 +1,28 @@
 module lockin (
-    input                 common_p::clk_dom_s sys_dom_i,
+    input                      common_p::clk_dom_s sys_dom_i,
 
-    input                                     lockin_en_i,
-    input                                     clear_state_i,
+    input                                          lockin_en_i,
+    input                                          clear_state_i,
 
-    input      clks_alot_p::drift_direction_e active_drift_direction_i, // This should already have the active drift direction taken into account.
-    input     clks_alot_p::half_rate_limits_s half_rate_limits_i,
+    input           clks_alot_p::drift_direction_e active_drift_direction_i, // This should already have the active drift direction taken into account.
+    input          clks_alot_p::half_rate_limits_s half_rate_limits_i,
 
     input  [(clks_alot_p::RATE_COUNTER_WIDTH)-1:0] rate_accumulator_i,
-    input                                     filtered_event_i,
-    input                                     polarity_filtered_event_i,
-    input                                     active_rate_valid_i,
+    input                                          filtered_event_i,
+    input                                          polarity_filtered_event_i,
+    input                                          active_rate_valid_i,
     input  [(clks_alot_p::RATE_COUNTER_WIDTH)-1:0] active_rate_i,
     
     // These signals loop back to drive `active_drift_direction_i` after the first valid drift
-    output                                    drift_detected_o,
-    output     clks_alot_p::drift_direction_e drift_direction_o,
+    output                                         drift_detected_o,
+    output          clks_alot_p::drift_direction_e drift_direction_o,
     output [(clks_alot_p::RATE_COUNTER_WIDTH)-1:0] drift_amount_o,
 
-    output                                    update_rate_o,
-    output                                    clear_rate_o,
-    output                                    locked_in_o
+    output                                         update_rate_o,
+    output                                         clear_rate_o,
+    output                                         locked_in_o,
+
+    output                                         rate_violation_o
 );
 
 // Clock Configuration
@@ -105,8 +107,10 @@ module lockin (
 
 // Event Filtering
     assign update_rate_o = (polarity_filtered_event_i && active_rate_valid_i && rate_within_window)
+                        || (polarity_filtered_event_i && active_rate_valid_i && rate_within_half_window)
                         || (polarity_filtered_event_i && ~active_rate_valid_i);
-    assign clear_rate_o = filtered_event_i
-                        || (polarity_filtered_event_i && active_rate_valid_i && rate_within_half_window);
+    assign clear_rate_o = filtered_event_i;
+    assign rate_violation_o = (polarity_filtered_event_i && active_rate_valid_i && ~rate_within_window)
+                           && (polarity_filtered_event_i && active_rate_valid_i && ~rate_within_half_window)
 
 endmodule : lockin

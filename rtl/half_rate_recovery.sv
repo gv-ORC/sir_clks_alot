@@ -21,20 +21,23 @@ event_filtering event_filtering (
 
 // Lockin the state of the expected clock
 lockin lockin (
-    .sys_dom_i               (),
-    .rate_control_en_i       (),
-    .clear_state_i           (),
-    .active_drift_direction_i(),
-    .half_rate_limits_i      (),
-    .current_rate_counter_i  (),
-    .filtered_event_i        (),
-    .active_rate_valid_i     (),
-    .active_rate_i           (),
-    .drift_detected_o        (),
-    .drift_direction_o       (),
-    .drift_amount_o          (),
-    .update_rate_o           (),
-    .locked_in_o             ()
+    .sys_dom_i                (),
+    .lockin_en_i              (),
+    .clear_state_i            (),
+    .active_drift_direction_i (),
+    .half_rate_limits_i       (),
+    .rate_accumulator_i       (),
+    .filtered_event_i         (),
+    .polarity_filtered_event_i(),
+    .active_rate_valid_i      (),
+    .active_rate_i            (),
+    .drift_detected_o         (),
+    .drift_direction_o        (),
+    .drift_amount_o           (),
+    .update_rate_o            (),
+    .clear_rate_o             (),
+    .locked_in_o              (),
+    .rate_violation_o         ()
 );
 
 // Accumulate half-rates and properly average them over time to get the active rate.

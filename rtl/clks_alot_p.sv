@@ -9,6 +9,7 @@
 package clks_alot_p;
 
 // Common Parameters
+    //TODO: make these $clog2 based on max values
     parameter RATE_COUNTER_WIDTH = 32;
     parameter DRIFT_COUNTER_WIDTH = 8;
 
