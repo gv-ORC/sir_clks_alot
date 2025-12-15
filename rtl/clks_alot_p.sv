@@ -14,6 +14,7 @@ package clks_alot_p;
     parameter DRIFT_COUNTER_WIDTH = 8;
 
     parameter PRIORITIZE_COUNTER_WIDTH = 8;
+    parameter VIOLATION_COUNTER_WIDTH = 8;
 
 // Configuration Structs
     typedef struct packed {

@@ -10,8 +10,53 @@ module top (
     output clks_alot_p::generated_events_s preemetive_clks_o // Generation
 );
 
-// Recovery
+// Configuration
 
-// 
+// Recovery
+    recovery recovery (
+        .sys_dom_i                           (sys_dom_i),
+        .recovery_en_i                       (),
+        .clear_state_i                       (),
+        .source_select_i                     (),
+        .recovery_mode_i                     (),
+        .io_clk_i                            (),
+        .bandpass_upper_bound_i              (),
+        .bandpass_lower_bound_i              (),
+        .high_rate_bandpass_overshoot_o      (),
+        .high_rate_bandpass_undershoot_o     (),
+        .low_rate_bandpass_overshoot_o       (),
+        .low_rate_bandpass_undershoot_o      (),
+        .drift_polarity_en_i                 (),
+        .drift_polarity_i                    (),
+        .drift_window_i                      (),
+        .high_rate_positive_drift_violation_o(),
+        .high_rate_negative_drift_violation_o(),
+        .low_rate_positive_drift_violation_o (),
+        .low_rate_negative_drift_violation_o (),
+        .excessive_drift_violation_o         (),
+        .clock_encoded_data_en_i             (),
+        .rounding_polarity_i                 (),
+        .prioritization_growth_rate_i        (),
+        .prioritization_decay_rate_i         (),
+        .prioritization_saturation_limit_i   (),
+        .prioritization_plateau_limit_i      (),
+        .violation_growth_rate_i             (),
+        .violation_decay_rate_i              (),
+        .violation_saturation_limit_i        (),
+        .violation_trigger_limit_i           (),
+        .recovered_clk                       (),
+        .recovered_events_o                  (),
+        .fully_locked_in_o                   (),
+        .high_locked_in_o                    (),
+        .high_rate_changed_o                 (),
+        .high_rate_o                         (),
+        .low_locked_in_o                     (),
+        .low_rate_changed_o                  (),
+        .low_rate_o                          ()
+    );
+
+// Generation
+
+// Violation Control
 
 endmodule : top

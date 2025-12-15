@@ -67,7 +67,6 @@ module recovery_lockin_and_filtering (
 
     assign positive_drift_violation_o = pending_rate_i > upper_drift_bound;
     assign negative_drift_violation_o = pending_rate_i < lower_drift_bound;
-    wire   drift_violation = positive_drift_violation_o || negative_drift_violation_o;
 
 // Halving Detection
     wire [(clks_alot_p::RATE_COUNTER_WIDTH)-1:0] half_of_validated_rate = clks_alot_p::RATE_COUNTER_WIDTH'(validated_rate_i[(clks_alot_p::RATE_COUNTER_WIDTH)-1:1]);
@@ -79,8 +78,11 @@ module recovery_lockin_and_filtering (
     wire                                         halving_check = (pending_rate_i >= less_than_half_check) && clock_encoded_data_en_i;
 
 // Primary Event Assignment
-    assign  primary_event_o = rate_locked_in_i
-                            ? (polarity_filtered_event && ~badpass_fail && (~drift_violation || halving_check))
-                            : (polarity_filtered_event && ~badpass_fail);
+    // ToDo: Ignoring drift violations could risk an unrecoverable desync... so allow them to sync, but still trigger violations
+    // wire   drift_violation = positive_drift_violation_o || negative_drift_violation_o;
+    // assign primary_event_o = rate_locked_in_i
+    //                        ? (polarity_filtered_event && ~badpass_fail && (~drift_violation || halving_check))
+    //                        : (polarity_filtered_event && ~badpass_fail);
+    assign  primary_event_o = polarity_filtered_event && ~badpass_fail;
 
 endmodule : recovery_lockin_and_filtering

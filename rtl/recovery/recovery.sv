@@ -40,6 +40,7 @@ module recovery (
     output                                               high_rate_negative_drift_violation_o,
     output                                               low_rate_positive_drift_violation_o,
     output                                               low_rate_negative_drift_violation_o,
+    output                                               excessive_drift_violation_o,
 
 // Halving - Forces the high rate to monitor both edges, not just one... allowing it to more accurately recover a clock from data.
     // Low rate output is disabled during this mode...
@@ -49,13 +50,21 @@ module recovery (
     //  > If 0: When full-rate comes back odd, the low-rate has the extra cycle added
     input                                                rounding_polarity_i,
 
-// Priotization Configuration   
-    input  [(clks_alot_p::PRIORITIZE_COUNTER_WIDTH)-1:0] growth_rate_i,
-    input  [(clks_alot_p::PRIORITIZE_COUNTER_WIDTH)-1:0] decay_rate_i,
-    // `saturation_limit_i` needs to be at least 1 growth rate below the max allowed by `clks_alot_p::PRIORITIZE_COUNTER_WIDTH`
-    input  [(clks_alot_p::PRIORITIZE_COUNTER_WIDTH)-1:0] saturation_limit_i,
-    // `plateau_limit_i` needs to be at greater-than or equal-to `decay_rate_i`
-    input  [(clks_alot_p::PRIORITIZE_COUNTER_WIDTH)-1:0] plateau_limit_i,
+// Half-Rate Priotization Configuration   
+    input  [(clks_alot_p::PRIORITIZE_COUNTER_WIDTH)-1:0] prioritization_growth_rate_i,
+    input  [(clks_alot_p::PRIORITIZE_COUNTER_WIDTH)-1:0] prioritization_decay_rate_i,
+    // `prioritization_saturation_limit_i` needs to be at least 1 growth rate below the max allowed by `clks_alot_p::PRIORITIZE_COUNTER_WIDTH`
+    input  [(clks_alot_p::PRIORITIZE_COUNTER_WIDTH)-1:0] prioritization_saturation_limit_i,
+    // `plateau_limit_i` needs to be at greater-than or equal-to `prioritization_decay_rate_i`
+    input  [(clks_alot_p::PRIORITIZE_COUNTER_WIDTH)-1:0] prioritization_plateau_limit_i,
+
+// Violation Priotization Configuration //! Currently only used for `excessive_drift_violation_o`
+    input   [(clks_alot_p::VIOLATION_COUNTER_WIDTH)-1:0] violation_growth_rate_i,
+    input   [(clks_alot_p::VIOLATION_COUNTER_WIDTH)-1:0] violation_decay_rate_i,
+    // `violation_saturation_limit_i` needs to be at least 1 growth rate below the max allowed by `clks_alot_p::VIOLATION_COUNTER_WIDTH`
+    input   [(clks_alot_p::VIOLATION_COUNTER_WIDTH)-1:0] violation_saturation_limit_i,
+    // `violation_trigger_limit_i` needs to be at greater-than or equal-to `prioritization_decay_rate_i`
+    input   [(clks_alot_p::VIOLATION_COUNTER_WIDTH)-1:0] violation_trigger_limit_i,
 
 // Output
     output                                               recovered_clk_o,
@@ -107,10 +116,10 @@ module recovery (
         .positive_drift_violation_o(high_rate_positive_drift_violation_o),
         .negative_drift_violation_o(high_rate_negative_drift_violation_o),
         .clock_encoded_data_en_i   (clock_encoded_data_en_i),
-        .growth_rate_i             (growth_rate_i),
-        .decay_rate_i              (decay_rate_i),
-        .saturation_limit_i        (saturation_limit_i),
-        .plateau_limit_i           (plateau_limit_i),
+        .growth_rate_i             (prioritization_growth_rate_i),
+        .decay_rate_i              (prioritization_decay_rate_i),
+        .saturation_limit_i        (prioritization_saturation_limit_i),
+        .plateau_limit_i           (half_rate_plateau_limit_i),
         .io_events_o               (recovered_events_o),
         .locked_in_o               (high_locked_in_o),
         .speed_change_detected_o   (high_rate_changed_o),
@@ -157,14 +166,31 @@ module recovery (
         .positive_drift_violation_o(low_rate_positive_drift_violation_o),
         .negative_drift_violation_o(low_rate_negative_drift_violation_o),
         .clock_encoded_data_en_i   (clock_encoded_data_en_i),
-        .growth_rate_i             (growth_rate_i),
-        .decay_rate_i              (decay_rate_i),
-        .saturation_limit_i        (saturation_limit_i),
-        .plateau_limit_i           (plateau_limit_i),
+        .growth_rate_i             (prioritization_growth_rate_i),
+        .decay_rate_i              (prioritization_decay_rate_i),
+        .saturation_limit_i        (prioritization_saturation_limit_i),
+        .plateau_limit_i           (half_rate_plateau_limit_i),
         .io_events_o               (), // Not Used: Only needed from 1 of these modules
         .locked_in_o               (recovered_low_locked_in),
         .speed_change_detected_o   (low_rate_changed_o),
         .rate_o                    (recovered_low_rate)
+    );
+
+// Excessive Drift
+    drift_violation_tracking drift_violation_tracking (
+        .sys_dom_i                      (sys_dom_i),
+        .recovery_en_i                  (recovery_en),
+        .clear_state_i                  (clear_state_i),
+        .growth_rate_i                  (violation_growth_rate_i),
+        .decay_rate_i                   (violation_decay_rate_i),
+        .saturation_limit_i             (violation_saturation_limit_i),
+        .violation_trigger_limit_i      (violation_trigger_limit_i),
+        .io_events_i                    (recovered_events),
+        .high_positive_drift_violation_i(high_rate_positive_drift_violation_o),
+        .high_negative_drift_violation_i(high_rate_negative_drift_violation_o),
+        .low_positive_drift_violation_i (low_rate_positive_drift_violation_o),
+        .low_negative_drift_violation_i (low_rate_negative_drift_violation_o),
+        .excessive_drift_violation_o    (excessive_drift_violation_o)
     );
 
 endmodule : recovery

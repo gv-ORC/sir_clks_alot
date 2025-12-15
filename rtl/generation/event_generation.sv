@@ -1,13 +1,13 @@
 module event_generation (
-    input                   common_p::clk_dom_s sys_dom_i,
+    input              common_p::clk_dom_s sys_dom_i,
 
-    input                                     clock_active_i,
+    input                                  clock_active_i,
 
-    input                                     io_clk_i,
-    input                                     half_rate_elapsed_i,
-    input                                     quarter_rate_elapsed_i,
+    input                                  io_clk_i,
+    input                                  half_rate_elapsed_i,
+    input                                  quarter_rate_elapsed_i,
 
-    output        clks_alot_p::generated_events_s clk_events_o
+    output clks_alot_p::generated_events_s clk_events_o
 );
 
     wire rising_edge_check = ~io_clk_i && half_rate_elapsed_i;

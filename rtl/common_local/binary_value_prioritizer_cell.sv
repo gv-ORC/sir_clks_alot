@@ -38,28 +38,24 @@ binary_value_prioritizer_cell #(
     assign data_o = value_current;
 
 // Saturation Counter
-    wire   matches_our_cell_o = value_current == data_i;
-    assign count_plateaued_o = saturation_count_o <= plateau_limit_i;
+    wire   value_mismatch = value_current != data_i;
 
-    wire   will_be_negative_check = saturation_count_o < decay_rate_i;
-
-    wire   decay_en = we_have_priority_i
-                    ? (~matches_our_cell_o && ~plateau_check && count_plateaued_o)
-                    : (~matches_our_cell_o && will_be_negative_check);
-    wire   clear_en = (~matches_our_cell_o && ~we_have_priority_i)
+    wire   clear_en = (value_mismatch && ~we_have_priority_i && we_i)
                    || clear_state_i;
 
-    // ToDo: Optimize away this module, its only 3 lines aded to a counter
     decaying_saturation_counter #(
         .COUNT_BIT_WIDTH(COUNT_BIT_WIDTH)
-    ) counter (
+    ) decaying_saturation_counter (
         .sys_dom_i         (sys_dom_i),
         .counter_en_i      (we_i),
-        .decay_en_i        (decay_en),
+        .decay_en_i        (value_mismatch),
         .clear_en_i        (clear_en),
         .growth_rate_i     (growth_rate_i),
         .decay_rate_i      (decay_rate_i),
         .saturation_limit_i(saturation_limit_i),
+        .plateau_en_i      (we_have_priority_i),
+        .plateau_limit_i   (plateau_limit_i),
+        .plateaued_o       (count_plateaued_o),
         .count_o           (saturation_count_o)
     );
 
