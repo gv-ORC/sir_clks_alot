@@ -148,8 +148,30 @@ Rising Edge and Falling Edge use same equation, they will always have same delta
 
 
 >NOTE: (r + w) <= (h + l) 
+
+! Assume the event pulses come the cycle directly before the edge transition
+Incoming Edge Name:                                            R3          F4       R4          F5
+Incoming Clock:                                                __------------_________------------___
+Counter(c):                                                    34 35 36 37 38 39 40 41 42 43 44 45 46
+Drift High Half-Rate:                                          4  4  4  4  4  4  4  4  4  4  4  4  4
+Drift Low Half-Rate:                                           3  3  3  3  3  3  3  3  3  3  3  3  3
+Counter:Expected Limit Delta:                                  2  -  -  -  2  -  -  2  -  -  -  2  - //* d = (x <= i) ? (i - x) : (f - x)  --- Only valid during Fn and Rn
+Drift Edge Name:                          R2          F3      {R3}        [F4]      R4          F5   
+Drift Clock (fake):                       __------------_________------------_________------------___
+Expected Edge Name:                             R3          F4      {R4}        [F5]      R5
+Expected Clock:                                 __------------_________------------_________---------
+Expected Half-Rate Limit:                       29 33 33 33 33 36 36 36 40 40 40 40 43 43 43 47 47 47 
+
+
+Drift Edge Name:                          R2     e    F3    d {R3}    c   [F4]   b  R4     a    F5   
+Drift Clock (fake):                       __------------_________------------_________------------___
+Counter(c):                                                    34 35 36 37 38 39 40 41 42 43 44 45 46
+Counter:Preemptive Limit Delta:                                0  -  -  -  3  -  -  0  -  -  -  3  - //* IF (x <= i) ? (i - x) : ((x <= f) ? (f - x) : (() ? () : (2f - x))  --- Only valid during Fn and Rn
+Preemptive Edge Name:         R3          F4       R4         {F5}      R6         [F7]   
+Preemptive Clock:             __------------_________------------_________------------_________------
+Preemptive Half-Rate Limit:   23 27 27 27 27 30 30 30 34 34 34 34 37 37 37 41 41 41 41 44 44 44 48 48
                                                                                                                Seed Sync           Start Sync          Neg Drift
-Incoming Edge Name:                                f0       r0          f1       r1          f2       r2         [f3]      r3         [f4]       r4     (f5)      r5          f6       r6          f7       r7          f8       r8
+Incoming Edge Name:                               f0       r0          f1       r1          f2       r2         [f3]      r3         [f4]      r4      (f5)      r5          f6       r6          f7       r7          f8       r8
 Incoming Clock:               xxxxxxx---------------_________------------_________------------_________------------_________------------_________---------_________------------_________------------_________------------_________------
 Counter(c):                   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70
 Drift High Half-Rate:         x x x x x x x x x x x  -  -  -  -  -  -  -  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4  4
@@ -159,12 +181,12 @@ Drift Target:                 x x x x x x x x x x x  -  -  -  -  -  -  -  24 24 
 Drift Event Lower Limit:      x x x x x x x x x x x  -  -  -  -  -  -  -  23 23 23 23 23 23 23 26 26 26 30 30 30 30 33 33 33 37 37 37 37 40 40 40 44 44 44 46 46 46 50 50 50 50 53 53 53 57 57 57 57 60 60 60 64 64 64 64 67 67 67 70 70
 Drift:Expected Limit Delta:   x x x x x x x x x x x  -  -  -  -  -  -  -  -  -  -  -  -  -  2  -1 -1 2  -2 -2 2  2  -1 -1 2  -2 -2 2  2  -1 -1 2  -2 -2 2  -2 -2 2  2  -1 -1 2  -2 -2 2  2  -1 -1 2  -2 -2 2  2  -1 -1 2  -2 -2 2  2  -1
 Drift:Preemptive Limit Delta: x x x x x x x x x x x  -  -  -  -  -  -  -  -  -  -  -  -  -  -  0  0  0  -1 -1 -1 3  0  0  0  -1 -1 -1 3  0  0  0  -1 -1 -1 3  0  0  0  -1 -1 -1 3  0  0  0  -1 -1 -1 3  0  0  0  -1 -1 -1 3  0  0  0  -1
-Drift Edge Name:                                                                             f2       r2         [f3]      r3         [f4]       r4     (f5)      r5          f6       r6          f7       r7          f8       r8
+Drift Edge Name:                                                                            f2       r2         [f3]      r3         [f4]      r4      (f5)      r5          f6       r6          f7       r7          f8       r8
 Drift Clock (fake):           xxxxxxxxxxxxxxxxxxxxxx------------------------------------------_________------------_________------------_________---------_________------------_________------------_________------------_________------
-Expected Edge Name:                                                                                f3       r3          f4       r4          f5       r6
+Expected Edge Name:                                                                               f3       r3          f4       r4          f5       r6
 Expected Clock:               xxxxxxxxxxxxxxxxxxxxxx------------------------------------------------_________------------_________------------_________---
 Expected Half-Rate Limit:     x x x x x x x x x x x  -  -  -  -  -  -  -  26 26 26 26 26 26 26 26 26 29 29 29 33 33 33 33 36 36 36 40 40 40 40 43 43 43 47
-Preemptive Edge Name:                                                            f3       r3          f4       r4          f5       r6          f7
+Preemptive Edge Name:                                                           f3       r3          f4       r4          f5       r6          f7
 Preemptive Clock:             xxxxxxxxxxxxxxxxxxxxxx------------------------------_________------------_________------------_________------------_________
 Preemptive Half-Rate Limit:   x x x x x x x x x x x  -  -  -  -  -  -  -  20 20 20 23 23 23 27 27 27 27 30 30 30 34 34 34 34 37 37 37 41 41 41 41 44 44 44
 
