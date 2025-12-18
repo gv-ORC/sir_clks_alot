@@ -41,6 +41,7 @@ module clock_generation (
     input                                         pause_en_i,
     input                                         pause_polarity_i,
     output             clks_alot_p::clock_state_s pausable_clk_state_o,
+    //TODO: add these violations
     output                                        pause_start_violation_o,
     output                                        pause_stop_violation_o
 );
@@ -51,7 +52,8 @@ module clock_generation (
     wire sync_rst = sys_dom_i.sync_rst;
 
 // Rate Tracking
-    wire [(clks_alot_p::RATE_COUNTER_WIDTH)-1:0] target;
+    wire [(clks_alot_p::RATE_COUNTER_WIDTH)-1:0] quarter_rate_target;
+    wire [(clks_alot_p::RATE_COUNTER_WIDTH)-1:0] half_rate_target;
     wire [(clks_alot_p::RATE_COUNTER_WIDTH)-1:0] active_half_rate;
     wire [(clks_alot_p::RATE_COUNTER_WIDTH)-1:0] inactive_half_rate;
     rate_tracking rate_tracking (
@@ -62,7 +64,8 @@ module clock_generation (
         .low_rate_i            (low_rate_i),
         .unpausable_clk_state_i(unpausable_clk_state_o),
         .counter_current_i     (counter_current_i),
-        .target_o              (target),
+        .quarter_rate_target_o (quarter_rate_target),
+        .half_rate_target_o    (half_rate_target),
         .active_half_rate_o    (active_half_rate),
         .inactive_half_rate_o  (inactive_half_rate),
     );
@@ -133,41 +136,27 @@ module clock_generation (
         .data_o            (anticipated_falling_delta)
     );
 
-    assign unpausable_clk_state_o.status.locked = rising_delta_locked && falling_delta_locked;
+    wire locked_check = rising_delta_locked && falling_delta_locked && fully_locked_in_i;
 
 // Delta Error
     assign delta_mismatch_violation_o = ((calculated_delta != anticipated_rising_delta) && recovered_events_i.rising_edge)
                                      || ((calculated_delta != anticipated_falling_delta) && recovered_events_i.falling_edge);
 
-// Clock DFF
-    wire half_target_reached = target == counter_current_i;
-    wire quarter_target_reached = target == counter_current_i;
-
-    reg  clock_current;
-    wire clock_next = (init_i || sync_rst || clear_state_i)
-                    ? starting_polarity_i
-                    : ~clock_current;
-    wire clock_trigger = sync_rst
-                      || (clk_en && init_i)
-                      || (clk_en && sync_rst)
-                      || (clk_en && clear_state_i)
-                      || (clk_en && generation_en_i && target_reached);
-    always_ff @(posedge clk) begin
-        if (clock_trigger) begin
-            clock_current <= clock_next;
-        end
-    end
-
-// Pause Control (Only mutes pausable output.... Pause needs to start in the Preemptive, then goes into the expected... so they can stop on the same edge)
-
-// Event Generation
-    event_generation event_generation (
+// Clock Control
+    wire quarter_target_check = quarter_rate_target == counter_current_i;
+    wire half_target_check = half_rate_target == counter_current_i;
+    pausable_clock pausable_clock (
         .sys_dom_i             (sys_dom_i),
-        .clock_active_i        (),
-        .io_clk_i              (),
-        .half_rate_elapsed_i   (),
-        .quarter_rate_elapsed_i(),
-        .clk_events_o          (),
+        .generation_en_i       (generation_en_i),
+        .init_i                (init_i),
+        .starting_polarity_i   (starting_polarity_i),
+        .locked_i              (locked_check),
+        .quarter_toggle_event_i(quarter_target_check),
+        .half_toggle_event_i   (half_target_check),
+        .unpausable_clock_o    (unpausable_clk_state_o),
+        .pause_en_i            (pause_en_i),
+        .pause_polarity_i      (pause_polarity_i),
+        .pausable_clock_o      (pausable_clk_state_o)
     );
 
 endmodule : clock_generation

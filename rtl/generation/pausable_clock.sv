@@ -22,7 +22,6 @@ module pausable_clock (
     wire sync_rst = sys_dom_i.sync_rst;
 
 // Clock DFF
-
     reg  clock_current;
     wire clock_next = (init_i || sync_rst)
                     ? starting_polarity_i
@@ -57,11 +56,10 @@ module pausable_clock (
         .generation_en_i (generation_en_i),
         .clk_events_i    (unpausable_clock_o.events),
         .io_clk_i        (unpausable_clock_o.clk),
-        .pause_en_i      (),
-        .pause_polarity_i(),
-        .pausable_clock_o()
+        .io_clk_locked_i (unpausable_clock_o.status.locked)
+        .pause_en_i      (pause_en_i),
+        .pause_polarity_i(pause_polarity_i),
+        .pausable_clock_o(pausable_clock_o)
     );
-    
-
 
 endmodule : pausable_clock
