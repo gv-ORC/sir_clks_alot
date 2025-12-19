@@ -22,9 +22,17 @@
                 }:
                 {
                     fusesoc-project = {
+                        withVerilator = true;
+                        withCcache = true;
                         sources.local = "src";
                         extraPackages = [
                             pkgs.verible
+                            pkgs.haskellPackages.sv2v
+                            (inputs'.quartus.packages.mkVersion {
+                                version = 24;
+                                edition = "pro";
+                                extraArgs.devices = [ "cyclone10gx" ];
+                            })
                         ];
                     };
                 };
